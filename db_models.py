@@ -10,7 +10,8 @@ class User(Base):
         unique=True,
     )
     is_active = Column(Boolean, default=True)
-
+    # You can play with different lazy=... options, such as
+    # subquery, selectin, raise, ...
     notes = relationship("Note", back_populates="user", lazy="selectin")
 
 
@@ -40,16 +41,16 @@ class Document(Base):
     )
     total_users = column_property(select(0).scalar_subquery())
 
+    @classmethod
+    def __declare_last__(cls):
+        cls.total_users = column_property(
+            select(func.count(UserDocument.user_id))
+            .select_from(UserDocument)
+            .filter(UserDocument.document_id == cls.id)
+            .scalar_subquery()
+        )
+
 
 class UserDocument(Base):
     user_id = Column(Integer, ForeignKey("user.id"))
     document_id = Column(Integer, ForeignKey("document.id"))
-
-
-# The query is assigned later because we need UserDocument model
-Document.total_users = column_property(
-    select(func.count(UserDocument.user_id))
-    .select_from(UserDocument)
-    .filter(UserDocument.document_id == Document.id)
-    .scalar_subquery()
-)
